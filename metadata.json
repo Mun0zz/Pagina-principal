@@ -1,0 +1,6 @@
+{
+  "name": "Evaluador Emocional IA - Escaneo y Teachable Machine",
+  "description": "Aplicación interactiva de evaluación emocional en tres fases: escaneo de código QR, detección en tiempo real con cámara mediante Teachable Machine y recursos de apoyo con líneas de ayuda en Colombia.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

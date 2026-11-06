@@ -1,0 +1,1549 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Evaluador Emocional IA - Escaneo y Teachable Machine</title>
+    <meta name="description" content="Evaluación de emociones en tres fases: código QR interactivo, detección en tiempo real con Teachable Machine y recursos oficiales de apoyo en salud mental para Colombia." />
+    <meta property="og:title" content="Evaluador Emocional IA - Escaneo y Teachable Machine" />
+    <meta property="og:description" content="Evaluación de emociones con IA en tres fases con Teachable Machine y líneas de ayuda en Colombia." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <!-- Bootstrap 5.3.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+    <!-- TensorFlow.js y Teachable Machine Image Scripts Requeridos -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+    <!-- Estilos CSS Embebidos Modernos y Profesionales -->
+    <style>
+      :root {
+        --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        --surface-bg: #f8fafc;
+        --card-bg: #ffffff;
+        --text-primary: #0f172a;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+                    radial-gradient(circle at 90% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 40%),
+                    #f8fafc;
+        color: var(--text-primary);
+        min-height: 100vh;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Navbar & Header */
+      .app-header {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border-color);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+      }
+
+      .brand-badge {
+        font-size: 0.75rem;
+        background: #ede9fe;
+        color: #6d28d9;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        padding: 4px 10px;
+        border-radius: 9999px;
+      }
+
+      /* Stepper / Timeline */
+      .phase-stepper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .step-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        padding: 6px 14px;
+        border-radius: 30px;
+        background: #e2e8f0;
+        transition: all 0.3s ease;
+      }
+
+      .step-item.active {
+        background: #4f46e5;
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+      }
+
+      .step-item.completed {
+        background: #ecfdf5;
+        color: #059669;
+      }
+
+      .step-divider {
+        width: 24px;
+        height: 2px;
+        background: #cbd5e1;
+      }
+
+      /* Cards & Surfaces */
+      .glass-card {
+        background: #ffffff;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        border-radius: 1.25rem;
+        box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.06), 0 4px 10px -2px rgba(15, 23, 42, 0.03);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+      }
+
+      /* Transición Suave entre Fases */
+      .phase-container {
+        opacity: 1;
+        transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+        transform: translateY(0);
+      }
+
+      .phase-container.d-none {
+        display: none !important;
+      }
+
+      .phase-container.fade-leaving {
+        opacity: 0;
+        transform: translateY(-12px);
+      }
+
+      .phase-container.fade-entering {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      /* Fase 1: QR & Cronómetro */
+      .qr-frame {
+        position: relative;
+        display: inline-block;
+        padding: 16px;
+        background: #ffffff;
+        border-radius: 20px;
+        box-shadow: 0 12px 36px rgba(79, 70, 229, 0.12);
+        border: 2px solid #e0e7ff;
+      }
+
+      .qr-frame img {
+        width: 240px;
+        height: 240px;
+        object-fit: contain;
+        display: block;
+        border-radius: 12px;
+      }
+
+      /* Corner markers for scanner feel */
+      .scanner-corner {
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        border-color: #4f46e5;
+        border-style: solid;
+        pointer-events: none;
+      }
+      .corner-tl { top: -2px; left: -2px; border-width: 4px 0 0 4px; border-top-left-radius: 10px; }
+      .corner-tr { top: -2px; right: -2px; border-width: 4px 4px 0 0; border-top-right-radius: 10px; }
+      .corner-bl { bottom: -2px; left: -2px; border-width: 0 0 4px 4px; border-bottom-left-radius: 10px; }
+      .corner-br { bottom: -2px; right: -2px; border-width: 0 4px 4px 0; border-bottom-right-radius: 10px; }
+
+      /* Scanning line animation */
+      .scan-line {
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, #6366f1, #a855f7, transparent);
+        box-shadow: 0 0 12px #6366f1;
+        animation: scanMove 2.8s ease-in-out infinite alternate;
+        border-radius: 2px;
+      }
+
+      @keyframes scanMove {
+        0% { top: 18px; opacity: 0.3; }
+        50% { opacity: 1; }
+        100% { top: 236px; opacity: 0.3; }
+      }
+
+      /* Circular Countdown Timer */
+      .timer-wrapper {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        margin: 0 auto;
+      }
+
+      .timer-svg {
+        transform: rotate(-90deg);
+        width: 100px;
+        height: 100px;
+      }
+
+      .timer-bg {
+        fill: none;
+        stroke: #e2e8f0;
+        stroke-width: 7;
+      }
+
+      .timer-progress {
+        fill: none;
+        stroke: #4f46e5;
+        stroke-width: 7;
+        stroke-linecap: round;
+        stroke-dasharray: 283;
+        stroke-dashoffset: 0;
+        transition: stroke-dashoffset 1s linear, stroke 0.3s;
+      }
+
+      .timer-number {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #1e1b4b;
+      }
+
+      /* Fase 2: Cámara y Teachable Machine */
+      .webcam-viewport {
+        position: relative;
+        width: 100%;
+        max-width: 440px;
+        min-height: 330px;
+        margin: 0 auto;
+        background: #0f172a;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #334155;
+      }
+
+      .webcam-viewport canvas,
+      .webcam-viewport video {
+        width: 100% !important;
+        height: auto !important;
+        display: block;
+        border-radius: 16px;
+        transform: scaleX(-1); /* mirror effect */
+      }
+
+      /* Live status badge */
+      .live-indicator {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        background: rgba(15, 23, 42, 0.75);
+        backdrop-filter: blur(8px);
+        color: #ffffff;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 10;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+      }
+
+      .pulse-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background-color: #22c55e;
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+        animation: pulseAnimation 1.6s infinite;
+      }
+
+      @keyframes pulseAnimation {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+        70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+      }
+
+      .face-target-guide {
+        position: absolute;
+        width: 200px;
+        height: 250px;
+        border: 2px dashed rgba(255, 255, 255, 0.35);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 5;
+      }
+
+      /* Probability Bars */
+      .prob-row {
+        margin-bottom: 0.85rem;
+      }
+
+      .prob-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+      }
+
+      .custom-progress {
+        height: 12px;
+        background-color: #e2e8f0;
+        border-radius: 9999px;
+        overflow: hidden;
+      }
+
+      .custom-progress-bar {
+        height: 100%;
+        border-radius: 9999px;
+        transition: width 0.15s ease-out;
+      }
+
+      /* Stability / Detection Hold */
+      .hold-detection-container {
+        background: #f1f5f9;
+        border-radius: 14px;
+        padding: 12px 16px;
+        border: 1px solid #cbd5e1;
+      }
+
+      /* Fase 3: Tarjetas y Recursos */
+      .result-hero {
+        border-radius: 1.25rem;
+        padding: 2rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .result-positive {
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        border: 1px solid #a7f3d0;
+        color: #064e3b;
+      }
+
+      .result-negative {
+        background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%);
+        border: 1px solid #fecdd3;
+        color: #881337;
+      }
+
+      .result-neutral {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #bfdbfe;
+        color: #1e3a8a;
+      }
+
+      .chatbot-card {
+        background: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+        color: #ffffff;
+        border-radius: 1.25rem;
+        padding: 1.75rem;
+        box-shadow: 0 12px 28px -6px rgba(67, 56, 202, 0.4);
+        border: none;
+      }
+
+      .helpline-item {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        padding: 1.2rem;
+        transition: all 0.2s ease;
+      }
+
+      .helpline-item:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+        transform: translateY(-2px);
+      }
+
+      .helpline-badge {
+        font-weight: 800;
+        font-size: 1.1rem;
+        padding: 6px 14px;
+        border-radius: 10px;
+      }
+
+      /* Breathing circle widget */
+      .breathing-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        text-align: center;
+      }
+
+      .breathing-circle {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: #6366f1;
+        margin: 1rem auto;
+        opacity: 0.85;
+        animation: breathCycle 8s infinite ease-in-out;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 0.9rem;
+      }
+
+      @keyframes breathCycle {
+        0%, 100% { transform: scale(0.75); background: #818cf8; }
+        45%, 55% { transform: scale(1.25); background: #4f46e5; }
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 576px) {
+        .qr-frame img {
+          width: 200px;
+          height: 200px;
+        }
+        .step-label {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Encabezado de la Aplicación -->
+    <header class="app-header py-3 px-4 shadow-xs">
+      <div class="container-xl d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+          <div class="d-flex align-items-center justify-content-center bg-primary text-white rounded-3 shadow-sm" style="width: 42px; height: 42px;">
+            <i class="bi bi-heart-pulse-fill fs-5"></i>
+          </div>
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <h1 class="h5 mb-0 fw-bold text-dark">Evaluador Emocional IA</h1>
+              <span class="brand-badge d-none d-sm-inline-block">Teachable Machine</span>
+            </div>
+            <p class="text-muted small mb-0">Evaluación interactiva y red de apoyo emocional en Colombia</p>
+          </div>
+        </div>
+
+        <!-- Indicador de Fases / Estado -->
+        <div class="d-flex align-items-center gap-2">
+          <button id="btn-restart-app" class="btn btn-outline-secondary btn-sm px-3 rounded-pill d-flex align-items-center gap-1" title="Reiniciar desde la Fase 1">
+            <i class="bi bi-arrow-counterclockwise"></i>
+            <span class="d-none d-md-inline">Reiniciar</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="container-xl py-4 flex-grow-1">
+      <!-- Barra de Pasos / Control de Estado -->
+      <div class="phase-stepper">
+        <div id="step-badge-1" class="step-item active">
+          <i class="bi bi-qr-code"></i>
+          <span class="step-label">1. Escaneo QR</span>
+        </div>
+        <div class="step-divider"></div>
+        <div id="step-badge-2" class="step-item">
+          <i class="bi bi-camera-video"></i>
+          <span class="step-label">2. Detección Facial</span>
+        </div>
+        <div class="step-divider"></div>
+        <div id="step-badge-3" class="step-item">
+          <i class="bi bi-clipboard2-heart"></i>
+          <span class="step-label">3. Resultados y Apoyo</span>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- FASE 1: ESCANEO DE CÓDIGO QR (20 SEGUNDOS) -->
+      <!-- ========================================== -->
+      <section id="phase-1-container" class="phase-container">
+        <div class="row justify-content-center">
+          <div class="col-lg-8 col-xl-7">
+            <div class="glass-card text-center p-4 p-md-5">
+              
+              <!-- Badge de Fase -->
+              <div class="mb-3">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-semibold">
+                  <i class="bi bi-phone me-1"></i> Fase 1: Vinculación Móvil
+                </span>
+              </div>
+
+              <!-- Encabezado Claro Requerido -->
+              <h2 class="h3 fw-bold text-dark mb-2">
+                Escanea el código QR desde tu celular para seleccionar la emoción a evaluar
+              </h2>
+              <p class="text-muted mb-4 mx-auto" style="max-width: 520px;">
+                Abre la cámara de tu smartphone o lector QR para abrir la selección inicial. En cuanto termine el conteo regresivo, activaremos la cámara de este dispositivo para la detección automática.
+              </p>
+
+              <!-- Contenedor Centralizado del Código QR con Estilo Formal y Limpio -->
+              <div class="my-3">
+                <div class="qr-frame">
+                  <span class="scanner-corner corner-tl"></span>
+                  <span class="scanner-corner corner-tr"></span>
+                  <span class="scanner-corner corner-bl"></span>
+                  <span class="scanner-corner corner-br"></span>
+                  <div class="scan-line"></div>
+                  
+                  <img 
+                    id="qr-image"
+                    src="/assets/aistudio/image_c2c5563f.png" 
+                    alt="Código QR de Selección Emocional"
+                    onerror="this.onerror=null; this.src='public/assets/aistudio/image_c2c5563f.png';"
+                  />
+                </div>
+              </div>
+
+              <!-- Cronómetro Inverso Visible de 20 Segundos -->
+              <div class="mt-4 mb-3">
+                <div class="timer-wrapper">
+                  <svg class="timer-svg" viewBox="0 0 100 100">
+                    <circle class="timer-bg" cx="50" cy="50" r="45"></circle>
+                    <circle id="timer-progress-ring" class="timer-progress" cx="50" cy="50" r="45"></circle>
+                  </svg>
+                  <div id="countdown-text" class="timer-number">20</div>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                  <i class="bi bi-stopwatch text-primary me-1"></i>
+                  Iniciando Fase 2 en <strong id="countdown-seconds-label" class="text-dark">20 segundos</strong>...
+                </p>
+              </div>
+
+              <!-- Botón para omitir el tiempo de espera si ya se escaneó -->
+              <div class="d-flex justify-content-center gap-2 mt-4">
+                <button id="btn-skip-timer" class="btn btn-outline-primary btn-sm px-4 py-2 rounded-pill fw-semibold">
+                  Omitir espera e iniciar cámara ahora <i class="bi bi-arrow-right ms-1"></i>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================== -->
+      <!-- FASE 2: DETECCIÓN CON CÁMARA Y TEACHABLE MACHINE       -->
+      <!-- ====================================================== -->
+      <section id="phase-2-container" class="phase-container d-none">
+        <div class="row g-4 justify-content-center">
+          
+          <!-- Columna Izquierda: Reproductor de Video y Controles -->
+          <div class="col-lg-6 col-xl-5">
+            <div class="glass-card p-4 h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <div>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill fw-semibold mb-1">
+                      Fase 2: Inteligencia Artificial
+                    </span>
+                    <h2 class="h4 fw-bold text-dark mb-0">Reconocimiento Facial</h2>
+                  </div>
+                  <span id="model-status-badge" class="badge bg-secondary-subtle text-secondary px-2 py-1 rounded">
+                    Cargando modelo...
+                  </span>
+                </div>
+                <p class="text-muted small mb-3">
+                  Mantén tu rostro centrado dentro del marco. La inteligencia artificial clasifica tus microexpresiones en tiempo real.
+                </p>
+              </div>
+
+              <!-- Contenedor del Reproductor de Video con Indicador Visual -->
+              <div class="my-2">
+                <div class="webcam-viewport">
+                  <!-- Indicador Visual Requerido: "Analizando emoción..." -->
+                  <div class="live-indicator">
+                    <span class="pulse-dot"></span>
+                    <span id="live-indicator-text">Analizando emoción...</span>
+                  </div>
+
+                  <!-- Guía visual de alineación de rostro -->
+                  <div class="face-target-guide"></div>
+
+                  <!-- Canvas de Teachable Machine montado dinámicamente -->
+                  <div id="webcam-container" class="w-100 h-100 d-flex align-items-center justify-content-center">
+                    <div id="webcam-loading-spinner" class="text-center text-white py-5">
+                      <div class="spinner-border text-light mb-2" role="status"></div>
+                      <p class="small text-white-50 mb-0">Iniciando cámara y cargando modelo...</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Alerta si los permisos de cámara son denegados -->
+                <div id="camera-error-box" class="alert alert-warning mt-3 d-none" role="alert">
+                  <div class="d-flex gap-2">
+                    <i class="bi bi-camera-video-off fs-4 text-warning"></i>
+                    <div>
+                      <strong>No se pudo acceder a la cámara web.</strong>
+                      <p class="small mb-2">Por favor permite el acceso a la cámara en los permisos de tu navegador o utiliza el selector manual para continuar.</p>
+                      <button id="btn-retry-camera" class="btn btn-warning btn-sm me-2">Reintentar cámara</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Indicador de Emoción Dominante Detectada en Tiempo Real -->
+              <div class="mt-3">
+                <div class="p-3 bg-light rounded-3 border d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center gap-2">
+                    <span id="dominant-emotion-icon" class="fs-3">🔎</span>
+                    <div>
+                      <small class="text-muted d-block fw-semibold text-uppercase" style="font-size: 0.7rem;">Emoción detectada ahora</small>
+                      <span id="dominant-emotion-name" class="fw-bold text-dark fs-5">Identificando...</span>
+                    </div>
+                  </div>
+                  <div class="text-end">
+                    <span id="dominant-emotion-percent" class="badge bg-primary fs-6 px-3 py-2 rounded-pill">0%</span>
+                  </div>
+                </div>
+
+                <!-- Barra de Estabilización para Avanzar a la Fase 3 -->
+                <div class="hold-detection-container mt-3">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="small fw-semibold text-dark">
+                      <i class="bi bi-hourglass-split text-primary me-1"></i>
+                      Confirmación de lectura:
+                    </span>
+                    <span id="hold-progress-text" class="small text-muted">Mantén la expresión 2s</span>
+                  </div>
+                  <div class="progress" style="height: 8px;">
+                    <div id="hold-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 0%;"></div>
+                  </div>
+                </div>
+
+                <!-- Botón Manual para Evaluar Inmediatamente -->
+                <div class="d-grid mt-3">
+                  <button id="btn-force-evaluate" class="btn btn-primary py-2 rounded-pill fw-semibold shadow-sm">
+                    <i class="bi bi-check2-circle me-1"></i> Capturar y Ver Diagnóstico Ahora
+                  </button>
+                </div>
+
+                <!-- Selector Manual para pruebas accesibles o fallback sin cámara -->
+                <div class="mt-3 text-center">
+                  <small class="text-muted d-block mb-1">O prueba directamente una emoción:</small>
+                  <div class="d-flex flex-wrap justify-content-center gap-1">
+                    <button class="btn btn-sm btn-outline-secondary py-1 px-2 btn-manual-sim" data-emotion="Felicidad">😊 Felicidad</button>
+                    <button class="btn btn-sm btn-outline-secondary py-1 px-2 btn-manual-sim" data-emotion="Tristeza">😢 Tristeza</button>
+                    <button class="btn btn-sm btn-outline-secondary py-1 px-2 btn-manual-sim" data-emotion="Enojo">😠 Enojo</button>
+                    <button class="btn btn-sm btn-outline-secondary py-1 px-2 btn-manual-sim" data-emotion="Miedo">😨 Miedo</button>
+                    <button class="btn btn-sm btn-outline-secondary py-1 px-2 btn-manual-sim" data-emotion="Sorpresa">😲 Sorpresa</button>
+                    <button class="btn btn-sm btn-outline-secondary py-1 px-2 btn-manual-sim" data-emotion="Asco">🤢 Asco</button>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Barras de Probabilidad en Tiempo Real -->
+          <div class="col-lg-6 col-xl-5">
+            <div class="glass-card p-4 h-100 d-flex flex-column">
+              <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                <h3 class="h5 fw-bold text-dark mb-0">
+                  <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Clasificación en Tiempo Real
+                </h3>
+                <span class="badge bg-light text-dark border">6 Clases IA</span>
+              </div>
+              <p class="text-muted small mb-3">
+                Distribución porcentual de las probabilidades calculadas por el modelo de <em>Teachable Machine</em>:
+              </p>
+
+              <!-- Lista Dinámica de Barras de Probabilidad -->
+              <div id="probability-bars-container" class="flex-grow-1 d-flex flex-column justify-content-around py-2">
+                <!-- Se llena dinámicamente con JavaScript -->
+              </div>
+
+              <!-- Tip de recomendación -->
+              <div class="p-3 bg-primary-subtle rounded-3 border border-primary-subtle mt-3">
+                <div class="d-flex gap-2 align-items-start">
+                  <i class="bi bi-lightbulb-fill text-primary fs-5 mt-1"></i>
+                  <div>
+                    <strong class="d-block text-primary fw-semibold small">Consejo para una lectura óptima</strong>
+                    <span class="text-muted small">
+                      Asegúrate de contar con buena iluminación frontal y mira directamente a la cámara mientras expresas tu emoción.
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ====================================================== -->
+      <!-- FASE 3: RETROALIMENTACIÓN Y RECURSOS DE APOYO         -->
+      <!-- ====================================================== -->
+      <section id="phase-3-container" class="phase-container d-none">
+        <div class="row justify-content-center">
+          <div class="col-lg-10 col-xl-9">
+            
+            <!-- Tarjeta Principal de Diagnóstico / Retroalimentación -->
+            <div id="result-hero-card" class="result-hero mb-4 shadow-sm">
+              <div class="row align-items-center">
+                <div class="col-md-3 text-center mb-3 mb-md-0">
+                  <div id="result-emotion-emoji" class="display-1 mb-2">😊</div>
+                  <span id="result-confidence-badge" class="badge bg-white text-dark shadow-sm px-3 py-1 fs-6 rounded-pill">
+                    94% Coincidencia
+                  </span>
+                </div>
+                <div class="col-md-9">
+                  <div class="d-flex align-items-center gap-2 mb-1">
+                    <span id="result-category-badge" class="badge bg-success text-white px-2 py-1 rounded">
+                      Emoción Positiva
+                    </span>
+                    <small id="result-timestamp" class="text-muted">Evaluado hace un momento</small>
+                  </div>
+                  <h2 id="result-emotion-title" class="h3 fw-bold mb-2">
+                    Emoción Predominante: Felicidad
+                  </h2>
+                  <p id="result-emotion-message" class="lead mb-0 fs-6">
+                    ¡Tu sonrisa ilumina tu entorno! Las emociones positivas fortalecen tu salud física y mental.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECCIÓN CONDICIONAL: RECURSOS DE APOYO PARA EMOCIONES PREOCUPANTES / NEGATIVAS -->
+            <div id="support-resources-section" class="mb-4 d-none">
+              
+              <!-- Título de Alerta Empática -->
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <span class="d-inline-flex align-items-center justify-content-center bg-danger-subtle text-danger p-2 rounded-circle">
+                  <i class="bi bi-shield-heart-fill fs-5"></i>
+                </span>
+                <div>
+                  <h3 class="h5 fw-bold text-dark mb-0">Red de Apoyo y Recursos Inmediatos</h3>
+                  <small class="text-muted">No estás solo(a). Hay profesionales y herramientas disponibles para escucharte hoy mismo.</small>
+                </div>
+              </div>
+
+              <!-- 1. Chatbot de Apoyo Requerido: Renee Space -->
+              <div class="card chatbot-card mb-4">
+                <div class="row align-items-center">
+                  <div class="col-md-8 mb-3 mb-md-0">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                      <span class="badge bg-white text-primary fw-bold px-3 py-1 rounded-pill">
+                        <i class="bi bi-chat-dots-fill me-1"></i> Asistencia Inmediata
+                      </span>
+                      <span class="badge bg-white-50 text-white px-2 py-1 rounded-pill small">
+                        Confidencial y Gratuito
+                      </span>
+                    </div>
+                    <h4 class="h4 fw-bold mb-2">Chatbot de Apoyo Emocional Renee Space</h4>
+                    <p class="mb-0 text-white-50">
+                      Conversa de forma segura con un entorno diseñado para brindarte escucha empática, contención guiada y orientación en momentos de ansiedad, tristeza o sobrecarga.
+                    </p>
+                  </div>
+                  <div class="col-md-4 text-md-end text-center">
+                    <a 
+                      href="https://www.reneespace.com/chat/create" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      class="btn btn-light text-primary btn-lg fw-bold shadow px-4 py-2 rounded-pill d-inline-flex align-items-center gap-2"
+                    >
+                      <span>Abrir Chatbot</span>
+                      <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Líneas de Atención Oficiales en Colombia Requeridas -->
+              <div class="glass-card p-4 mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                  <h4 class="h5 fw-bold text-dark mb-0">
+                    <i class="bi bi-telephone-inbound-fill text-danger me-2"></i>Líneas de Atención Oficiales en Colombia
+                  </h4>
+                  <span class="badge bg-success-subtle text-success border border-success-subtle">
+                    Disponibilidad 24/7
+                  </span>
+                </div>
+                <p class="text-muted small mb-3">
+                  Si sientes que la situación te desborda o necesitas hablar con un profesional en salud mental, comunícate de manera gratuita a través de estas líneas oficiales:
+                </p>
+
+                <div class="row g-3">
+                  
+                  <!-- Línea 106 -->
+                  <div class="col-md-6">
+                    <div class="helpline-item h-100 d-flex flex-column justify-content-between">
+                      <div>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                          <span class="helpline-badge bg-primary text-white">Línea 106</span>
+                          <span class="badge bg-light text-muted border">Bogotá 24/7</span>
+                        </div>
+                        <h5 class="fw-bold fs-6 text-dark mb-1">Atención en Salud Mental</h5>
+                        <p class="small text-muted mb-3">
+                          Secretaría Distrital de Salud. Orientación psicosocial, apoyo ante crisis emocionales y escucha activa gratuita.
+                        </p>
+                      </div>
+                      <a href="tel:106" class="btn btn-outline-primary btn-sm rounded-pill fw-semibold w-100">
+                        <i class="bi bi-telephone-fill me-1"></i> Llamar al 106
+                      </a>
+                    </div>
+                  </div>
+
+                  <!-- Línea 192 (Opción 4) -->
+                  <div class="col-md-6">
+                    <div class="helpline-item h-100 d-flex flex-column justify-content-between">
+                      <div>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                          <span class="helpline-badge bg-info text-dark">Línea 192</span>
+                          <span class="badge bg-light text-muted border">Nacional (Opción 4)</span>
+                        </div>
+                        <h5 class="fw-bold fs-6 text-dark mb-1">Ministerio de Salud de Colombia</h5>
+                        <p class="small text-muted mb-3">
+                          Apoyo en salud mental a nivel nacional. Marca 192 y selecciona la opción 4 para atención psicológica calificada.
+                        </p>
+                      </div>
+                      <a href="tel:192" class="btn btn-outline-info btn-sm rounded-pill fw-semibold text-dark w-100">
+                        <i class="bi bi-telephone-fill me-1"></i> Marcar 192 (Opción 4)
+                      </a>
+                    </div>
+                  </div>
+
+                  <!-- Línea Calma -->
+                  <div class="col-md-6">
+                    <div class="helpline-item h-100 d-flex flex-column justify-content-between">
+                      <div>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                          <span class="helpline-badge bg-warning text-dark">018000 423614</span>
+                          <span class="badge bg-light text-muted border">Línea Calma</span>
+                        </div>
+                        <h5 class="fw-bold fs-6 text-dark mb-1">Atención y Escucha para Hombres</h5>
+                        <p class="small text-muted mb-3">
+                          Espacio de reflexión, gestión del enojo, prevención de la violencia y manejo de crisis afectivas para varones.
+                        </p>
+                      </div>
+                      <a href="tel:018000423614" class="btn btn-outline-warning btn-sm rounded-pill fw-semibold text-dark w-100">
+                        <i class="bi bi-telephone-fill me-1"></i> Llamar a Línea Calma
+                      </a>
+                    </div>
+                  </div>
+
+                  <!-- Línea Púrpura -->
+                  <div class="col-md-6">
+                    <div class="helpline-item h-100 d-flex flex-column justify-content-between">
+                      <div>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                          <span class="helpline-badge" style="background-color: #8b5cf6; color: white;">Línea Púrpura</span>
+                          <span class="badge bg-light text-muted border">Mujeres</span>
+                        </div>
+                        <h5 class="fw-bold fs-6 text-dark mb-1">Atención para Mujeres</h5>
+                        <p class="small text-muted mb-3">
+                          Llamada gratuita: <strong>018000 112137</strong> o chat de WhatsApp directo al <strong>310 5550919</strong>. Acompañamiento integral.
+                        </p>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <a href="tel:018000112137" class="btn btn-outline-secondary btn-sm rounded-pill fw-semibold flex-grow-1">
+                          <i class="bi bi-telephone-fill me-1"></i> Llamar
+                        </a>
+                        <a href="https://wa.me/573105550919?text=Hola,%20necesito%20apoyo%20y%20escucha%20emocional" target="_blank" rel="noopener noreferrer" class="btn btn-success btn-sm rounded-pill fw-semibold flex-grow-1">
+                          <i class="bi bi-whatsapp me-1"></i> WhatsApp
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Línea de Emergencias 123 -->
+                  <div class="col-12">
+                    <div class="helpline-item bg-danger-subtle border-danger-subtle d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+                      <div class="d-flex align-items-center gap-3">
+                        <div class="bg-danger text-white rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                          <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                        </div>
+                        <div>
+                          <h5 class="fw-bold fs-6 text-danger mb-0">Línea de Emergencias 123</h5>
+                          <p class="small text-muted mb-0">Atención médica, policial y rescate ante situaciones críticas o riesgo vital inminente en Colombia.</p>
+                        </div>
+                      </div>
+                      <a href="tel:123" class="btn btn-danger btn-sm px-4 py-2 rounded-pill fw-bold text-nowrap">
+                        <i class="bi bi-telephone-fill me-1"></i> Emergencias 123
+                      </a>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Micro-ejercicio de respiración consciente -->
+              <div class="breathing-box mb-4">
+                <h5 class="fw-bold text-dark mb-1">
+                  <i class="bi bi-wind text-primary me-2"></i>Pausa de Calma: Respiración Guiada 4-4-4
+                </h5>
+                <p class="text-muted small mb-2">
+                  Toma un momento para sincronizar tu respiración y tranquilizar tu sistema nervioso:
+                </p>
+                <div class="breathing-circle">
+                  <span id="breath-text">Inhala</span>
+                </div>
+                <small class="text-muted">Inhala suavemente por la nariz cuando el círculo crezca, sostén y exhala lentamente por la boca.</small>
+              </div>
+
+            </div>
+
+            <!-- SECCIÓN CONDICIONAL: MENSAJE POSITIVO / AFIRMACIÓN -->
+            <div id="positive-resources-section" class="mb-4">
+              <div class="glass-card p-4">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <div class="bg-success text-white rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                    <i class="bi bi-stars fs-5"></i>
+                  </div>
+                  <div>
+                    <h4 class="h5 fw-bold text-dark mb-0">Afirmación y Prácticas de Bienestar</h4>
+                    <small class="text-muted">Potencia tu estado de ánimo positivo y cultiva resiliencia</small>
+                  </div>
+                </div>
+
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <div class="p-3 bg-light rounded-3 h-100 border">
+                      <div class="text-primary mb-2"><i class="bi bi-heart-fill fs-4"></i></div>
+                      <h6 class="fw-bold text-dark">Gratitud Activa</h6>
+                      <p class="small text-muted mb-0">Anota 3 cosas sencillas por las que sientes agradecimiento hoy para afianzar el bienestar.</p>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="p-3 bg-light rounded-3 h-100 border">
+                      <div class="text-success mb-2"><i class="bi bi-people-fill fs-4"></i></div>
+                      <h6 class="fw-bold text-dark">Efecto Contagio</h6>
+                      <p class="small text-muted mb-0">Comparte tu optimismo con alguien cercano; una sonrisa sincera alegra el día de otra persona.</p>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="p-3 bg-light rounded-3 h-100 border">
+                      <div class="text-warning mb-2"><i class="bi bi-brightness-high-fill fs-4"></i></div>
+                      <h6 class="fw-bold text-dark">Presencia Plena</h6>
+                      <p class="small text-muted mb-0">Disfruta conscientemente de este momento de serenidad y permítete celebrarlo.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botones de Navegación y Repetición -->
+            <div class="glass-card p-4 text-center">
+              <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+                <button id="btn-repeat-camera" class="btn btn-primary px-4 py-2 rounded-pill fw-semibold shadow-sm">
+                  <i class="bi bi-camera-video me-1"></i> Repetir Evaluación con Cámara
+                </button>
+                <button id="btn-restart-phase1" class="btn btn-outline-secondary px-4 py-2 rounded-pill fw-semibold">
+                  <i class="bi bi-arrow-repeat me-1"></i> Reiniciar desde el Inicio (Fase 1 QR)
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-3 text-center text-muted small border-top bg-white">
+      <div class="container">
+        <span>Evaluador Emocional IA • Modelo Teachable Machine con Google • Recursos de Salud Mental Colombia</span>
+      </div>
+    </footer>
+
+    <!-- Bootstrap 5.3.3 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <!-- ======================================================== -->
+    <!-- JAVASCRIPT VANILLA: CONTROL DE ESTADOS Y CLASIFICACIÓN    -->
+    <!-- ======================================================== -->
+    <script>
+      (function() {
+        'use strict';
+
+        // URL del modelo Teachable Machine
+        const TEACHABLE_MACHINE_URL = "https://teachablemachine.withgoogle.com/models/wbJ9br-8M/";
+
+        // Configuración de metadatos de emociones
+        const EMOTION_CONFIG = {
+          "Felicidad": {
+            type: "positive",
+            label: "Felicidad",
+            emoji: "😊",
+            colorClass: "bg-success",
+            colorHex: "#10b981",
+            message: "¡Qué maravillosa energía reflejas! Las emociones positivas fortalecen tu sistema inmunológico, liberan serotonina y contagian optimismo a quienes te rodean. Celebra este momento y compártelo con tu entorno."
+          },
+          "Sorpresa": {
+            type: "neutral",
+            label: "Sorpresa",
+            emoji: "😲",
+            colorClass: "bg-info text-dark",
+            colorHex: "#0ea5e9",
+            message: "El asombro activa la curiosidad y la plasticidad mental. Es un recordatorio de que siempre hay novedades por descubrir. Canaliza esta atención hacia tus intereses y aprendizajes de hoy."
+          },
+          "Tristeza": {
+            type: "negative",
+            label: "Tristeza",
+            emoji: "😢",
+            colorClass: "bg-primary",
+            colorHex: "#3b82f6",
+            message: "Comprendemos profundamente tu sentir. Es completamente natural y humano sentirse triste o vulnerable; no tienes que afrontarlo en soledad. Hemos preparado herramientas de escucha y líneas gratuitas para ti."
+          },
+          "Miedo": {
+            type: "negative",
+            label: "Miedo / Ansiedad",
+            emoji: "😨",
+            colorClass: "bg-purple",
+            colorHex: "#8b5cf6",
+            message: "La incertidumbre puede hacernos sentir inquietos o temerosos. Recuerda que estás a salvo y que las sensaciones intensas pasan. Respira profundo, haz una pausa y cuenta con nuestro equipo de apoyo."
+          },
+          "Enojo": {
+            type: "negative",
+            label: "Enojo / Frustración",
+            emoji: "😠",
+            colorClass: "bg-danger",
+            colorHex: "#ef4444",
+            message: "El enojo nos alerta cuando algo nos perturba o vulnera nuestros límites. Antes de reaccionar, regálate unos momentos de respiración pausada para recuperar la claridad y serenidad."
+          },
+          "Asco": {
+            type: "negative",
+            label: "Desagrado / Incomodidad",
+            emoji: "🤢",
+            colorClass: "bg-warning text-dark",
+            colorHex: "#eab308",
+            message: "El rechazo o incomodidad es una respuesta de protección instintiva. Reconoce qué situación te está generando malestar y prioriza espacios que te brinden paz y bienestar."
+          }
+        };
+
+        // Estado Global de la Aplicación
+        const state = {
+          currentPhase: 1, // 1, 2 o 3
+          countdownTime: 20,
+          countdownInterval: null,
+          model: null,
+          webcam: null,
+          maxPredictions: 0,
+          isCameraRunning: false,
+          animationFrameId: null,
+          currentPredictions: [],
+          dominantEmotion: null,
+          dominantStreakCount: 0, // Cuenta para confirmar la emoción
+          streakThreshold: 20, // ~2.5 - 3 segundos a ~10-15 fps
+          evaluatingLocked: false
+        };
+
+        // Elementos del DOM
+        const els = {
+          // Badges de paso
+          stepBadge1: document.getElementById('step-badge-1'),
+          stepBadge2: document.getElementById('step-badge-2'),
+          stepBadge3: document.getElementById('step-badge-3'),
+
+          // Fases contenedores
+          phase1: document.getElementById('phase-1-container'),
+          phase2: document.getElementById('phase-2-container'),
+          phase3: document.getElementById('phase-3-container'),
+
+          // Fase 1 elementos
+          countdownText: document.getElementById('countdown-text'),
+          countdownSecondsLabel: document.getElementById('countdown-seconds-label'),
+          timerProgressRing: document.getElementById('timer-progress-ring'),
+          btnSkipTimer: document.getElementById('btn-skip-timer'),
+          btnRestartApp: document.getElementById('btn-restart-app'),
+
+          // Fase 2 elementos
+          modelStatusBadge: document.getElementById('model-status-badge'),
+          webcamContainer: document.getElementById('webcam-container'),
+          webcamLoadingSpinner: document.getElementById('webcam-loading-spinner'),
+          cameraErrorBox: document.getElementById('camera-error-box'),
+          btnRetryCamera: document.getElementById('btn-retry-camera'),
+          liveIndicatorText: document.getElementById('live-indicator-text'),
+          dominantEmotionIcon: document.getElementById('dominant-emotion-icon'),
+          dominantEmotionName: document.getElementById('dominant-emotion-name'),
+          dominantEmotionPercent: document.getElementById('dominant-emotion-percent'),
+          holdProgressBar: document.getElementById('hold-progress-bar'),
+          holdProgressText: document.getElementById('hold-progress-text'),
+          btnForceEvaluate: document.getElementById('btn-force-evaluate'),
+          probabilityBarsContainer: document.getElementById('probability-bars-container'),
+
+          // Fase 3 elementos
+          resultHeroCard: document.getElementById('result-hero-card'),
+          resultEmotionEmoji: document.getElementById('result-emotion-emoji'),
+          resultEmotionTitle: document.getElementById('result-emotion-title'),
+          resultEmotionMessage: document.getElementById('result-emotion-message'),
+          resultConfidenceBadge: document.getElementById('result-confidence-badge'),
+          resultCategoryBadge: document.getElementById('result-category-badge'),
+          resultTimestamp: document.getElementById('result-timestamp'),
+          supportResourcesSection: document.getElementById('support-resources-section'),
+          positiveResourcesSection: document.getElementById('positive-resources-section'),
+          btnRepeatCamera: document.getElementById('btn-repeat-camera'),
+          btnRestartPhase1: document.getElementById('btn-restart-phase1'),
+          breathText: document.getElementById('breath-text')
+        };
+
+        // Inicialización
+        function init() {
+          setupEventListeners();
+          startPhase1Countdown();
+          setupBreathingCycle();
+        }
+
+        // Configuración de Event Listeners
+        function setupEventListeners() {
+          els.btnSkipTimer.addEventListener('click', () => {
+            clearInterval(state.countdownInterval);
+            transitionToPhase(2);
+          });
+
+          els.btnRestartApp.addEventListener('click', () => {
+            resetToPhase1();
+          });
+
+          els.btnRetryCamera.addEventListener('click', () => {
+            els.cameraErrorBox.classList.add('d-none');
+            startTeachableMachine();
+          });
+
+          els.btnForceEvaluate.addEventListener('click', () => {
+            if (state.dominantEmotion) {
+              completeDetection(state.dominantEmotion.className, state.dominantEmotion.probability);
+            } else {
+              completeDetection("Felicidad", 0.95);
+            }
+          });
+
+          // Botones manuales de simulación
+          document.querySelectorAll('.btn-manual-sim').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              const emotion = e.currentTarget.getAttribute('data-emotion');
+              completeDetection(emotion, 0.96);
+            });
+          });
+
+          els.btnRepeatCamera.addEventListener('click', () => {
+            transitionToPhase(2);
+          });
+
+          els.btnRestartPhase1.addEventListener('click', () => {
+            resetToPhase1();
+          });
+        }
+
+        // ==========================================
+        // FASE 1: CRONÓMETRO INVERSO (20 SEGUNDOS)
+        // ==========================================
+        function startPhase1Countdown() {
+          clearInterval(state.countdownInterval);
+          state.countdownTime = 20;
+          updateTimerUI(state.countdownTime);
+
+          const totalCircumference = 283; // 2 * PI * 45 ≈ 282.74
+
+          state.countdownInterval = setInterval(() => {
+            state.countdownTime--;
+            updateTimerUI(state.countdownTime);
+
+            // Actualizar anillo SVG
+            const progress = (state.countdownTime / 20) * totalCircumference;
+            els.timerProgressRing.style.strokeDashoffset = (totalCircumference - progress);
+
+            // Al llegar a 0 segundos, transición suave a la Fase 2
+            if (state.countdownTime <= 0) {
+              clearInterval(state.countdownInterval);
+              transitionToPhase(2);
+            }
+          }, 1000);
+        }
+
+        function updateTimerUI(seconds) {
+          els.countdownText.textContent = seconds;
+          els.countdownSecondsLabel.textContent = `${seconds} segundo${seconds !== 1 ? 's' : ''}`;
+        }
+
+        // ==========================================
+        // CONTROL DE ESTADOS Y TRANSICIÓN SUAVE
+        // ==========================================
+        function transitionToPhase(newPhase) {
+          const currentEl = state.currentPhase === 1 ? els.phase1 :
+                            state.currentPhase === 2 ? els.phase2 : els.phase3;
+
+          const nextEl = newPhase === 1 ? els.phase1 :
+                         newPhase === 2 ? els.phase2 : els.phase3;
+
+          // Efecto suave de fade-out
+          currentEl.classList.add('fade-leaving');
+
+          setTimeout(() => {
+            currentEl.classList.add('d-none');
+            currentEl.classList.remove('fade-leaving');
+
+            // Detener cámara si salimos de la fase 2
+            if (state.currentPhase === 2 && newPhase !== 2) {
+              stopWebcam();
+            }
+
+            state.currentPhase = newPhase;
+            updateStepperUI(newPhase);
+
+            // Preparar y mostrar siguiente fase con fade-in
+            nextEl.classList.remove('d-none');
+            nextEl.classList.add('fade-entering');
+            
+            // Forzar reflow para animación
+            void nextEl.offsetWidth;
+            nextEl.classList.remove('fade-entering');
+
+            // Acciones específicas de la fase
+            if (newPhase === 2) {
+              startTeachableMachine();
+            } else if (newPhase === 1) {
+              startPhase1Countdown();
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }, 350);
+        }
+
+        function updateStepperUI(activeStep) {
+          // Paso 1
+          els.stepBadge1.className = 'step-item ' + (activeStep === 1 ? 'active' : (activeStep > 1 ? 'completed' : ''));
+          // Paso 2
+          els.stepBadge2.className = 'step-item ' + (activeStep === 2 ? 'active' : (activeStep > 2 ? 'completed' : ''));
+          // Paso 3
+          els.stepBadge3.className = 'step-item ' + (activeStep === 3 ? 'active' : '');
+        }
+
+        function resetToPhase1() {
+          clearInterval(state.countdownInterval);
+          stopWebcam();
+          state.evaluatingLocked = false;
+          state.dominantStreakCount = 0;
+          transitionToPhase(1);
+        }
+
+        // ==========================================
+        // FASE 2: TEACHABLE MACHINE Y CÁMARA
+        // ==========================================
+        async function startTeachableMachine() {
+          state.evaluatingLocked = false;
+          state.dominantStreakCount = 0;
+          updateHoldProgress(0);
+
+          els.modelStatusBadge.className = 'badge bg-warning-subtle text-warning border px-2 py-1 rounded';
+          els.modelStatusBadge.textContent = 'Cargando modelo...';
+          els.liveIndicatorText.textContent = 'Analizando emoción...';
+
+          try {
+            // Cargar modelo si aún no está cargado
+            if (!state.model) {
+              const modelURL = TEACHABLE_MACHINE_URL + "model.json";
+              const metadataURL = TEACHABLE_MACHINE_URL + "metadata.json";
+              state.model = await tmImage.load(modelURL, metadataURL);
+              state.maxPredictions = state.model.getTotalClasses();
+              initProbabilityBars();
+            }
+
+            els.modelStatusBadge.className = 'badge bg-success-subtle text-success border px-2 py-1 rounded';
+            els.modelStatusBadge.textContent = 'Modelo activo';
+
+            // Configurar Webcam
+            await setupWebcam();
+
+          } catch (err) {
+            console.error("Error al iniciar Teachable Machine:", err);
+            els.modelStatusBadge.className = 'badge bg-danger-subtle text-danger border px-2 py-1 rounded';
+            els.modelStatusBadge.textContent = 'Error de cámara';
+            els.cameraErrorBox.classList.remove('d-none');
+            els.webcamLoadingSpinner.classList.add('d-none');
+          }
+        }
+
+        async function setupWebcam() {
+          try {
+            const flip = true; // Efecto espejo para el usuario
+            const width = 400;
+            const height = 350;
+
+            state.webcam = new tmImage.Webcam(width, height, flip);
+            await state.webcam.setup(); // Solicita permisos
+            await state.webcam.play();
+            state.isCameraRunning = true;
+
+            // Limpiar contenedor y montar canvas de la webcam
+            els.webcamContainer.innerHTML = '';
+            els.webcamContainer.appendChild(state.webcam.canvas);
+            els.cameraErrorBox.classList.add('d-none');
+
+            // Bucle de predicción
+            runPredictionLoop();
+
+          } catch (webcamErr) {
+            console.warn("Permiso de cámara no concedido o no disponible:", webcamErr);
+            els.cameraErrorBox.classList.remove('d-none');
+            els.webcamLoadingSpinner.classList.add('d-none');
+          }
+        }
+
+        function stopWebcam() {
+          state.isCameraRunning = false;
+          if (state.animationFrameId) {
+            cancelAnimationFrame(state.animationFrameId);
+            state.animationFrameId = null;
+          }
+          if (state.webcam) {
+            try {
+              state.webcam.stop();
+            } catch (e) {
+              console.warn("Deteniendo webcam:", e);
+            }
+          }
+        }
+
+        function runPredictionLoop() {
+          if (!state.isCameraRunning) return;
+
+          state.webcam.update();
+          predictFrame().then(() => {
+            if (state.isCameraRunning && !state.evaluatingLocked) {
+              state.animationFrameId = requestAnimationFrame(runPredictionLoop);
+            }
+          });
+        }
+
+        async function predictFrame() {
+          if (!state.model || !state.webcam.canvas) return;
+
+          const predictions = await state.model.predict(state.webcam.canvas);
+          state.currentPredictions = predictions;
+
+          let highest = { className: '', probability: -1 };
+
+          // Actualizar barras de probabilidad
+          for (let i = 0; i < state.maxPredictions; i++) {
+            const pred = predictions[i];
+            const percent = Math.round(pred.probability * 100);
+            
+            updateProbabilityBar(pred.className, percent);
+
+            if (pred.probability > highest.probability) {
+              highest = pred;
+            }
+          }
+
+          // Identificar emoción predominante
+          if (highest.probability >= 0.40) {
+            state.dominantEmotion = highest;
+            updateDominantDisplay(highest.className, highest.probability);
+
+            // Verificar si la emoción es consistente para auto-avanzar a Fase 3
+            if (highest.probability >= 0.65) {
+              state.dominantStreakCount++;
+              const progressPct = Math.min(100, Math.round((state.dominantStreakCount / state.streakThreshold) * 100));
+              updateHoldProgress(progressPct, highest.className);
+
+              if (state.dominantStreakCount >= state.streakThreshold && !state.evaluatingLocked) {
+                state.evaluatingLocked = true;
+                playSuccessSound();
+                setTimeout(() => {
+                  completeDetection(highest.className, highest.probability);
+                }, 400);
+              }
+            } else {
+              // Disminuir suavemente el streak si baja la probabilidad
+              state.dominantStreakCount = Math.max(0, state.dominantStreakCount - 1);
+              updateHoldProgress(Math.round((state.dominantStreakCount / state.streakThreshold) * 100));
+            }
+          }
+        }
+
+        function initProbabilityBars() {
+          els.probabilityBarsContainer.innerHTML = '';
+          const labels = state.model.getClassLabels();
+
+          labels.forEach(className => {
+            const config = EMOTION_CONFIG[className] || {
+              emoji: '🎯',
+              label: className,
+              colorHex: '#6366f1'
+            };
+
+            const row = document.createElement('div');
+            row.className = 'prob-row';
+            row.id = `prob-row-${className}`;
+            row.innerHTML = `
+              <div class="prob-label">
+                <span class="d-flex align-items-center gap-1">
+                  <span>${config.emoji}</span>
+                  <span class="text-dark fw-semibold">${config.label}</span>
+                </span>
+                <span id="prob-val-${className}" class="text-muted fw-bold">0%</span>
+              </div>
+              <div class="custom-progress">
+                <div id="prob-bar-${className}" class="custom-progress-bar" style="width: 0%; background-color: ${config.colorHex};"></div>
+              </div>
+            `;
+            els.probabilityBarsContainer.appendChild(row);
+          });
+        }
+
+        function updateProbabilityBar(className, percent) {
+          const valEl = document.getElementById(`prob-val-${className}`);
+          const barEl = document.getElementById(`prob-bar-${className}`);
+          if (valEl && barEl) {
+            valEl.textContent = `${percent}%`;
+            barEl.style.width = `${percent}%`;
+            
+            // Destacar si tiene alta probabilidad
+            if (percent > 60) {
+              valEl.className = 'text-dark fw-bold';
+            } else {
+              valEl.className = 'text-muted fw-bold';
+            }
+          }
+        }
+
+        function updateDominantDisplay(className, probability) {
+          const config = EMOTION_CONFIG[className] || {
+            emoji: '✨',
+            label: className
+          };
+          const percent = Math.round(probability * 100);
+
+          els.dominantEmotionIcon.textContent = config.emoji;
+          els.dominantEmotionName.textContent = config.label;
+          els.dominantEmotionPercent.textContent = `${percent}%`;
+        }
+
+        function updateHoldProgress(pct, className) {
+          els.holdProgressBar.style.width = `${pct}%`;
+          if (pct > 0 && className) {
+            els.holdProgressText.textContent = `Confirmando ${className}... (${pct}%)`;
+          } else {
+            els.holdProgressText.textContent = `Mantén la expresión ~2s`;
+          }
+        }
+
+        // Pequeño sonido de confirmación sintético con Web Audio API
+        function playSuccessSound() {
+          try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.18); // A5
+
+            gain.gain.setValueAtTime(0.12, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 0.36);
+          } catch (e) {
+            // Silencioso en caso de bloqueo de audio autoplay
+          }
+        }
+
+        // ==========================================
+        // FASE 3: RETROALIMENTACIÓN Y RECURSOS
+        // ==========================================
+        function completeDetection(emotionName, probability) {
+          const config = EMOTION_CONFIG[emotionName] || {
+            type: "neutral",
+            label: emotionName,
+            emoji: "✨",
+            colorClass: "bg-secondary",
+            message: "Se ha registrado la emoción observada en tu evaluación."
+          };
+
+          const percent = Math.round((probability || 0.9) * 100);
+
+          // Configurar contenido de la tarjeta de resultado
+          els.resultEmotionEmoji.textContent = config.emoji;
+          els.resultEmotionTitle.textContent = `Emoción Predominante: ${config.label}`;
+          els.resultEmotionMessage.textContent = config.message;
+          els.resultConfidenceBadge.textContent = `${percent}% Nivel de Coincidencia`;
+
+          const now = new Date();
+          els.resultTimestamp.textContent = `Evaluado a las ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+          // Estilo y visibilidad según tipo de emoción
+          if (config.type === "positive" || config.type === "neutral") {
+            // Positiva / Neutra
+            els.resultHeroCard.className = 'result-hero mb-4 shadow-sm ' + (config.type === 'positive' ? 'result-positive' : 'result-neutral');
+            els.resultCategoryBadge.className = 'badge bg-success text-white px-3 py-1 rounded-pill';
+            els.resultCategoryBadge.textContent = 'Emoción Favorable / Positiva';
+
+            // Mostrar afirmaciones y ocultar recursos críticos (pero disponibles abajo)
+            els.positiveResourcesSection.classList.remove('d-none');
+            els.supportResourcesSection.classList.add('d-none');
+          } else {
+            // Preocupante / Negativa (Tristeza, Miedo, Enojo, Asco)
+            els.resultHeroCard.className = 'result-hero mb-4 shadow-sm result-negative';
+            els.resultCategoryBadge.className = 'badge bg-danger text-white px-3 py-1 rounded-pill';
+            els.resultCategoryBadge.textContent = 'Atención Emocional Sugerida';
+
+            // Mostrar el chatbot de Renee Space y líneas oficiales en Colombia
+            els.supportResourcesSection.classList.remove('d-none');
+            els.positiveResourcesSection.classList.add('d-none');
+          }
+
+          transitionToPhase(3);
+        }
+
+        // Guía de respiración cíclica
+        function setupBreathingCycle() {
+          const phases = ["Inhala...", "Retén el aire...", "Exhala suavemente...", "Descansa y calma..."];
+          let phaseIdx = 0;
+          setInterval(() => {
+            if (state.currentPhase === 3 && els.breathText) {
+              phaseIdx = (phaseIdx + 1) % phases.length;
+              els.breathText.textContent = phases[phaseIdx];
+            }
+          }, 2000);
+        }
+
+        // Iniciar al cargar el DOM
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', init);
+        } else {
+          init();
+        }
+
+      })();
+    </script>
+  </body>
+</html>
